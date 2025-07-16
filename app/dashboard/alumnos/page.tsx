@@ -50,7 +50,6 @@ export default function AlumnosPage() {
       fechaCreacion: '2025-01-15T10:00:00',
       emailConfirmacionEnviado: false,
       entrevistaRealizada: false,
-      autorizadoComunicacionesEmail: true
     },
     {
       id: 2,
@@ -67,7 +66,6 @@ export default function AlumnosPage() {
       fechaCreacion: '2025-01-12T14:30:00',
       emailConfirmacionEnviado: true,
       entrevistaRealizada: false,
-      autorizadoComunicacionesEmail: true
     },
     {
       id: 3,
@@ -84,33 +82,60 @@ export default function AlumnosPage() {
       fechaCreacion: '2025-01-10T09:15:00',
       emailConfirmacionEnviado: true,
       entrevistaRealizada: true,
-      autorizadoComunicacionesEmail: true
     }
   ] as SolicitudAdmision[]);
 
   const [alumnos] = useState<Alumno[]>([
     {
       id: 1,
-      nombre: 'Juan Pérez',
+      nombre: 'Juan',
+      apellido: 'Pérez',
       dni: '12345678',
+      fechaNacimiento: '2015-05-15',
+      genero: 'Masculino',
+      estadoCivil: 'Soltero',
+      nacionalidad: 'Argentina',
+      domicilio: 'Av. Rivadavia 1234',
+      telefono: '11-1234-5678',
+      celular: '11-1234-5678',
+      emailContacto: 'juan.perez@email.com',
+      fechaCreacion: '2022-03-01',
+      fechaActualizacion: '2022-03-01',
       legajoAlumno: 'ALU-2022-001',
       fechaInscripcion: '2022-03-01',
       seccionActual: {
         id: 1,
-        nombre: '4° A'
+        nombre: '4° A',
+        fechaCreacion: '2022-01-01',
+        fechaActualizacion: '2022-01-01',
+        estadoBaja: BajaStatus.ACTIVO
       } as any,
       estadoBaja: BajaStatus.ACTIVO,
       familiares: []
     },
     {
       id: 2,
-      nombre: 'Sofía Ramírez',
+      nombre: 'Sofía',
+      apellido: 'Ramírez',
       dni: '87654321',
+      fechaNacimiento: '2018-08-20',
+      genero: 'Femenino',
+      estadoCivil: 'Soltera',
+      nacionalidad: 'Argentina',
+      domicilio: 'Calle San Martín 567',
+      telefono: '11-8765-4321',
+      celular: '11-8765-4321',
+      emailContacto: 'sofia.ramirez@email.com',
+      fechaCreacion: '2023-03-01',
+      fechaActualizacion: '2023-03-01',
       legajoAlumno: 'ALU-2023-002',
       fechaInscripcion: '2023-03-01',
       seccionActual: {
         id: 2,
-        nombre: 'Sala 5'
+        nombre: 'Sala 5',
+        fechaCreacion: '2023-01-01',
+        fechaActualizacion: '2023-01-01',
+        estadoBaja: BajaStatus.ACTIVO
       } as any,
       estadoBaja: BajaStatus.ACTIVO,
       familiares: []

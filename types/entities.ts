@@ -195,7 +195,6 @@ export interface SolicitudAdmision extends BaseEntity {
   fechaEntrevistaConfirmada?: string;
   emailConfirmacionEnviado: boolean;
   entrevistaRealizada: boolean;
-  autorizadoComunicacionesEmail: boolean;
 }
 
 export interface Materia extends BaseEntity {

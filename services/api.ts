@@ -18,6 +18,7 @@ import {
   ApplicationStatus,
   CourseType,
   ShiftType,
+  AspiranteFamiliar,
   InternetConnectivity,
   NivelAcademico,
   LaborCondition,
@@ -32,25 +33,69 @@ import {
 
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8080/api';
 
+// Verificamos que la URL de la API esté configurada correctamente
+console.log('API_BASE_URL:', API_BASE_URL);
+
 class ApiService {
   private async request<T>(endpoint: string, options?: RequestInit): Promise<T> {
     const url = `${API_BASE_URL}${endpoint}`;
-    const token = localStorage.getItem('authToken');
+    let token;
     
-    const response = await fetch(url, {
-      ...options,
-      headers: {
+    // Verificamos si estamos en el navegador antes de acceder a localStorage
+    if (typeof window !== 'undefined') {
+      token = localStorage.getItem('authToken');
+    }
+    
+    try {
+      console.log(`Realizando solicitud a: ${url}`);
+      
+      // Evitamos imprimir el cuerpo completo de la solicitud para no saturar la consola
+      const optionsLog = { ...options };
+      if (optionsLog.body) {
+        optionsLog.body = 'BODY_CONTENT_OMITTED';
+      }
+      console.log('Opciones:', JSON.stringify(optionsLog, null, 2));
+      
+      const headers = {
         'Content-Type': 'application/json',
         ...(token && { Authorization: `Bearer ${token}` }),
         ...options?.headers,
-      },
-    });
-
-    if (!response.ok) {
-      throw new Error(`API Error: ${response.status}`);
+      };
+      
+      const requestOptions = {
+        ...options,
+        headers,
+        mode: 'cors' as RequestMode,
+      };
+      
+      const response = await fetch(url, requestOptions);
+  
+      if (!response.ok) {
+        let errorText = '';
+        try {
+          errorText = await response.text();
+        } catch (e) {
+          errorText = 'No se pudo obtener el texto del error';
+        }
+        
+        console.error(`Error en la respuesta: ${response.status}`, errorText);
+        throw new Error(`API Error: ${response.status} - ${errorText}`);
+      }
+  
+      let data;
+      try {
+        data = await response.json();
+        console.log('Respuesta recibida:', data);
+      } catch (e) {
+        console.error('Error al parsear la respuesta JSON:', e);
+        throw new Error('Error al parsear la respuesta del servidor');
+      }
+      
+      return data;
+    } catch (error) {
+      console.error('Error en la solicitud:', error);
+      throw error;
     }
-
-    return response.json();
   }
 
   // Autenticación
@@ -73,11 +118,29 @@ class ApiService {
     return this.request('/solicitudes-admision');
   }
 
-  async createSolicitudAdmision(solicitud: Partial<SolicitudAdmision>): Promise<SolicitudAdmision> {
-    return this.request('/solicitudes-admision', {
-      method: 'POST',
-      body: JSON.stringify(solicitud),
-    });
+  async createSolicitudAdmision(solicitud: Partial<SolicitudAdmision> & { familiares?: AspiranteFamiliar[] }): Promise<SolicitudAdmision> {
+    try {
+      // Extraemos los familiares del objeto solicitud para manejarlos por separado
+      const { familiares, ...solicitudData } = solicitud;
+      
+      // Preparamos los datos para enviar
+      const dataToSend = {
+        ...solicitudData,
+        // Incluimos información sobre los familiares para que el backend pueda procesarlos
+        familiares: familiares || []
+      };
+      
+      console.log('API Service - Enviando solicitud a /solicitudes-admision');
+      
+      // Enviamos la solicitud de admisión
+      return this.request('/solicitudes-admision', {
+        method: 'POST',
+        body: JSON.stringify(dataToSend),
+      });
+    } catch (error) {
+      console.error('Error en createSolicitudAdmision:', error);
+      throw error;
+    }
   }
 
   async updateSolicitudAdmision(id: number, solicitud: Partial<SolicitudAdmision>): Promise<SolicitudAdmision> {

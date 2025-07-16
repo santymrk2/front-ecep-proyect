@@ -8,7 +8,9 @@ import {
   RelationType,
   Aspirante,
   AspiranteFamiliar,
-  Familiar 
+  Familiar,
+  SolicitudAdmision,
+  ApplicationStatus
 } from '@/types/entities';
 import { apiService } from '@/services/api';
 import { Button } from '@/components/ui/button';
@@ -18,12 +20,12 @@ import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Checkbox } from '@/components/ui/checkbox';
-import { ArrowLeft, ArrowRight, User, Users, Home, Heart, Check } from 'lucide-react';
+import { ArrowLeft, ArrowRight, User, Users, Home, Heart, Check, Plus } from 'lucide-react';
 import Link from 'next/link';
 
 export default function PostulacionPage() {
   const [currentStep, setCurrentStep] = useState(1);
-  const [formData, setFormData] = useState<Partial<Aspirante & { familiares: Partial<AspiranteFamiliar>[] }>>({
+  const [formData, setFormData] = useState<Partial<Aspirante & { familiares: AspiranteFamiliar[] }>>({
     // Datos del aspirante
     nombre: '',
     apellido: '',
@@ -54,8 +56,9 @@ export default function PostulacionPage() {
     coberturaMedica: '',
     observacionesAdicionalesSalud: '',
     // Confirmación
-    autorizadoComunicacionesEmail: false
   });
+
+  const [communicationsAuthorized, setCommunicationsAuthorized] = useState(false);
 
   const totalSteps = 5;
 
@@ -82,35 +85,126 @@ export default function PostulacionPage() {
     setFormData(prev => ({
       ...prev,
       familiares: [...(prev.familiares || []), {
+        id: 0, // Este valor será asignado por el backend
         tipoRelacion: RelationType.PADRE,
         viveConAlumno: true,
+        aspirante: {} as Aspirante, // Este valor será asignado por el backend
         familiar: {
+          id: 0, // Este valor será asignado por el backend
           nombre: '',
           apellido: '',
           dni: '',
-          telefono: '',
-          emailContacto: '',
+          fechaNacimiento: '',
+          genero: '',
+          estadoCivil: '',
+          nacionalidad: '',
           domicilio: '',
+          telefono: '',
+          celular: '',
+          emailContacto: '',
           lugarTrabajo: '',
-          ocupacion: ''
-        }
+          ocupacion: '',
+          alumnosAsociados: [], // Campo requerido por la interfaz Familiar
+          fechaCreacion: new Date().toISOString(),
+          fechaActualizacion: new Date().toISOString(),
+          estadoBaja: 'ACTIVO'
+        } as Familiar
       }]
     }));
   };
 
   const handleSubmit = () => {
-    apiService.createSolicitudAdmision({
-      aspirante: formData as Aspirante,
-      estado: ApplicationStatus.PENDIENTE,
-      emailConfirmacionEnviado: false,
-      entrevistaRealizada: false,
-      autorizadoComunicacionesEmail: formData.autorizadoComunicacionesEmail || false
-    }).then(() => {
-      alert('Postulación enviada exitosamente. Recibirá un email con los próximos pasos.');
-    }).catch(error => {
-      console.error('Error al enviar postulación:', error);
-      alert('Error al enviar la postulación. Por favor, intente nuevamente.');
-    });
+    try {
+      // Extraemos los familiares del formData
+      const { familiares, ...aspiranteData } = formData;
+      
+      // Validamos que los campos obligatorios estén completos
+      if (!aspiranteData.nombre || !aspiranteData.apellido || !aspiranteData.dni || 
+          !aspiranteData.fechaNacimiento || !aspiranteData.cursoSolicitado || 
+          !aspiranteData.turnoPreferido || !aspiranteData.conectividadInternet) {
+        alert('Por favor complete todos los campos obligatorios del aspirante.');
+        return;
+      }
+
+      if(!communicationsAuthorized){
+        alert('Debe autorizar a recibir comunicaciones por correo electrónico para enviar la postulación.');
+        return;
+      }
+      
+      // Simplificamos la estructura para evitar problemas con campos faltantes
+      const aspiranteSimplificado = {
+        nombre: aspiranteData.nombre,
+        apellido: aspiranteData.apellido,
+        dni: aspiranteData.dni,
+        fechaNacimiento: aspiranteData.fechaNacimiento,
+        genero: aspiranteData.genero || '',
+        estadoCivil: aspiranteData.estadoCivil || '',
+        nacionalidad: aspiranteData.nacionalidad || '',
+        domicilio: aspiranteData.domicilio || '',
+        telefono: aspiranteData.telefono || '',
+        celular: aspiranteData.celular || '',
+        emailContacto: aspiranteData.emailContacto || '',
+        cursoSolicitado: aspiranteData.cursoSolicitado || '',
+        turnoPreferido: aspiranteData.turnoPreferido,
+        escuelaActual: aspiranteData.escuelaActual || '',
+        conectividadInternet: aspiranteData.conectividadInternet,
+        dispositivosDisponibles: aspiranteData.dispositivosDisponibles || '',
+        idiomasHabladosHogar: aspiranteData.idiomasHabladosHogar || '',
+        enfermedadesAlergias: aspiranteData.enfermedadesAlergias || '',
+        medicacionHabitual: aspiranteData.medicacionHabitual || '',
+        limitacionesFisicasNeurologicas: aspiranteData.limitacionesFisicasNeurologicas || '',
+        tratamientosTerapeuticos: aspiranteData.tratamientosTerapeuticos || '',
+        usoAyudasMovilidad: aspiranteData.usoAyudasMovilidad || false,
+        coberturaMedica: aspiranteData.coberturaMedica || '',
+        observacionesAdicionalesSalud: aspiranteData.observacionesAdicionalesSalud || ''
+      };
+      
+      // Simplificamos los familiares para evitar problemas con campos faltantes
+const familiaresSimplificados = (familiares || []).map(familiar => ({
+        tipoRelacion: familiar.tipoRelacion,
+        viveConAlumno: familiar.viveConAlumno || false,
+        familiar: {
+          nombre: familiar.familiar?.nombre || '',
+          apellido: familiar.familiar?.apellido || '',
+          dni: familiar.familiar?.dni || '',
+          fechaNacimiento: familiar.familiar?.fechaNacimiento || '',
+          genero: familiar.familiar?.genero || '',
+          estadoCivil: familiar.familiar?.estadoCivil || '',
+          nacionalidad: familiar.familiar?.nacionalidad || '',
+          domicilio: familiar.familiar?.domicilio || '',
+          telefono: familiar.familiar?.telefono || '',
+          celular: familiar.familiar?.celular || '',
+          emailContacto: familiar.familiar?.emailContacto || '',
+          lugarTrabajo: familiar.familiar?.lugarTrabajo || '',
+          ocupacion: familiar.familiar?.ocupacion || ''
+        }
+      }));
+      
+      // Convertimos los datos a la estructura esperada por la API
+      const solicitudData = {
+        aspirante: aspiranteSimplificado,
+        estado: ApplicationStatus.PENDIENTE,
+        emailConfirmacionEnviado: false,
+        entrevistaRealizada: false,
+        familiares: familiaresSimplificados
+      }as Partial<SolicitudAdmision> & { familiares?: AspiranteFamiliar[] };
+      // Validamos que los campos obligatorios estén completos
+      
+      console.log('Enviando datos:', JSON.stringify(solicitudData, null, 2));
+      
+      apiService.createSolicitudAdmision(solicitudData)
+        .then(response => {
+          console.log('Respuesta exitosa:', response);
+          alert('Postulación enviada exitosamente. Recibirá un email con los próximos pasos.');
+        })
+        .catch(error => {
+          console.error('Error al enviar postulación:', error);
+          alert(`Error al enviar la postulación: ${error.message}. Por favor, intente nuevamente.`);
+        });
+    } catch (error) {
+      console.error('Error en el proceso de envío:', error);
+      alert(`Error inesperado: ${error}. Por favor, intente nuevamente.`);
+    }
   };
 
   const renderStep = () => {
@@ -316,6 +410,22 @@ export default function PostulacionPage() {
                     </div>
                     
                     <div>
+                      <Label>Fecha de Nacimiento</Label>
+                      <Input
+                        type="date"
+                        value={familiar.familiar?.fechaNacimiento || ''}
+                        onChange={(e) => {
+                          const newFamiliares = [...(formData.familiares || [])];
+                          newFamiliares[index] = {
+                            ...newFamiliares[index],
+                            familiar: { ...newFamiliares[index].familiar, fechaNacimiento: e.target.value }
+                          };
+                          handleInputChange('familiares', newFamiliares);
+                        }}
+                      />
+                    </div>
+                    
+                    <div>
                       <Label>Email</Label>
                       <Input
                         type="email"
@@ -346,6 +456,88 @@ export default function PostulacionPage() {
                         }}
                         placeholder="11-1234-5678"
                       />
+                    </div>
+                    
+                    <div>
+                      <Label>Celular</Label>
+                      <Input
+                        value={familiar.familiar?.celular || ''}
+                        onChange={(e) => {
+                          const newFamiliares = [...(formData.familiares || [])];
+                          newFamiliares[index] = {
+                            ...newFamiliares[index],
+                            familiar: { ...newFamiliares[index].familiar, celular: e.target.value }
+                          };
+                          handleInputChange('familiares', newFamiliares);
+                        }}
+                        placeholder="11-1234-5678"
+                      />
+                    </div>
+                    
+                    <div>
+                      <Label>Domicilio</Label>
+                      <Input
+                        value={familiar.familiar?.domicilio || ''}
+                        onChange={(e) => {
+                          const newFamiliares = [...(formData.familiares || [])];
+                          newFamiliares[index] = {
+                            ...newFamiliares[index],
+                            familiar: { ...newFamiliares[index].familiar, domicilio: e.target.value }
+                          };
+                          handleInputChange('familiares', newFamiliares);
+                        }}
+                        placeholder="Dirección completa"
+                      />
+                    </div>
+                    
+                    <div>
+                      <Label>Lugar de Trabajo</Label>
+                      <Input
+                        value={familiar.familiar?.lugarTrabajo || ''}
+                        onChange={(e) => {
+                          const newFamiliares = [...(formData.familiares || [])];
+                          newFamiliares[index] = {
+                            ...newFamiliares[index],
+                            familiar: { ...newFamiliares[index].familiar, lugarTrabajo: e.target.value }
+                          };
+                          handleInputChange('familiares', newFamiliares);
+                        }}
+                        placeholder="Lugar de trabajo"
+                      />
+                    </div>
+                    
+                    <div>
+                      <Label>Ocupación</Label>
+                      <Input
+                        value={familiar.familiar?.ocupacion || ''}
+                        onChange={(e) => {
+                          const newFamiliares = [...(formData.familiares || [])];
+                          newFamiliares[index] = {
+                            ...newFamiliares[index],
+                            familiar: { ...newFamiliares[index].familiar, ocupacion: e.target.value }
+                          };
+                          handleInputChange('familiares', newFamiliares);
+                        }}
+                        placeholder="Ocupación"
+                      />
+                    </div>
+                    
+                    <div className="md:col-span-2">
+                      <div className="flex items-center space-x-2">
+                        <Checkbox 
+                          id={`viveConAlumno-${index}`} 
+                          checked={familiar.viveConAlumno || false}
+                          onCheckedChange={(checked) => {
+                            const newFamiliares = [...(formData.familiares || [])];
+                            newFamiliares[index] = {
+                              ...newFamiliares[index],
+                              viveConAlumno: checked as boolean
+                            };
+                            handleInputChange('familiares', newFamiliares);
+                          }}
+                        />
+                        <Label htmlFor={`viveConAlumno-${index}`}>Vive con el alumno</Label>
+                      </div>
                     </div>
                   </div>
                 </div>
@@ -506,18 +698,34 @@ export default function PostulacionPage() {
               <div className="space-y-2 text-sm">
                 <p><strong>Aspirante:</strong> {formData.nombre} {formData.apellido}</p>
                 <p><strong>DNI:</strong> {formData.dni}</p>
-                <p><strong>Curso:</strong> {formData.cursoSolicitado}</p>
+                <p><strong>Curso:</strong> {
+                  formData.cursoSolicitado === CourseType.SALA_3 ? 'Sala de 3 años' :
+                  formData.cursoSolicitado === CourseType.SALA_4 ? 'Sala de 4 años' :
+                  formData.cursoSolicitado === CourseType.SALA_5 ? 'Sala de 5 años' :
+                  formData.cursoSolicitado === CourseType.PRIMER_GRADO ? '1° Grado' :
+                  formData.cursoSolicitado === CourseType.SEGUNDO_GRADO ? '2° Grado' :
+                  formData.cursoSolicitado === CourseType.TERCER_GRADO ? '3° Grado' :
+                  formData.cursoSolicitado === CourseType.CUARTO_GRADO ? '4° Grado' :
+                  formData.cursoSolicitado === CourseType.QUINTO_GRADO ? '5° Grado' :
+                  formData.cursoSolicitado === CourseType.SEXTO_GRADO ? '6° Grado' :
+                  'No seleccionado'
+                }</p>
+                <p><strong>Turno:</strong> {
+                  formData.turnoPreferido === ShiftType.MANANA ? 'Mañana' :
+                  formData.turnoPreferido === ShiftType.TARDE ? 'Tarde' :
+                  'No seleccionado'
+                }</p>
                 <p><strong>Familiares:</strong> {formData.familiares?.length || 0}</p>
               </div>
             </div>
             
             <div className="space-y-4">
               <div className="flex items-center space-x-2">
-                <Checkbox 
-                  id="autorizadoComunicacionesEmail" 
-                  checked={formData.autorizadoComunicacionesEmail || false}
-                  onCheckedChange={(checked) => handleInputChange('autorizadoComunicacionesEmail', checked)}
-                />
+<Checkbox 
+  id="autorizadoComunicacionesEmail" 
+  checked={communicationsAuthorized} // Use the new state here
+  onCheckedChange={(checked: boolean) => setCommunicationsAuthorized(checked)} // Update the new state
+/>
                 <Label htmlFor="autorizadoComunicacionesEmail" className="text-sm">
                   Autorizo a recibir comunicaciones por correo electrónico
                 </Label>
@@ -610,7 +818,7 @@ export default function PostulacionPage() {
               ) : (
                 <Button 
                   onClick={handleSubmit}
-                  disabled={!formData.autorizadoComunicacionesEmail}
+                  disabled={!communicationsAuthorized}
                 >
                   Enviar Postulación
                 </Button>
